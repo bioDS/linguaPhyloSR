@@ -17,12 +17,21 @@ public class TimeTreeNode {
 
     double age = 0.0;
     String id = null;
+    int lineage = 0;
+    int fossilNo = -1;
 
     private static final double zeroBranchLengthTolerance = 1e-15;
 
     SortedMap<String, Object> metaData = new TreeMap<>();
 
     TimeTree tree;
+
+    public TimeTreeNode(String id, TimeTree tree, int lineage) {
+        this.lineage = lineage;
+        this.id = id;
+        this.tree = tree;
+        age = 0.0;
+    }
 
     public TimeTreeNode(String id, TimeTree tree) {
         this.id = id;
@@ -54,6 +63,7 @@ public class TimeTreeNode {
         copy.id = id;
         copy.index = index;
         copy.age = age;
+        copy.lineage = lineage;
         copy.leafIndex = leafIndex;
         copy.metaData = metaData;
         for (TimeTreeNode child : children) {
@@ -88,6 +98,21 @@ public class TimeTreeNode {
         return children == null || children.size() == 0;
     }
 
+    public final boolean isObserved(){
+        return id != null;
+    }
+
+    public final boolean isFossil(){
+        String[] idVals;
+        if (id != null) {
+            idVals = id.split("_");
+            if (idVals.length == 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @MethodInfo(description="Age of the node.")
     public final double getAge() {
         return age;
@@ -95,6 +120,14 @@ public class TimeTreeNode {
 
     public List<TimeTreeNode> getChildren() {
         return children;
+    }
+
+    public final int getLineage() {
+        return lineage;
+    }
+
+    public final int getFossilNo() {
+        return fossilNo;
     }
 
     public final String getId() {
@@ -176,6 +209,14 @@ public class TimeTreeNode {
     public final void setId(String id) {
         this.id = id;
     }
+
+    public final void setLineage(int lineage) {
+        this.lineage = lineage;
+    }
+    public final void setFossilNo(int fossilNo) {
+        this.fossilNo = fossilNo;
+    }
+
 
     public final int getChildCount() {
         if (children == null) return 0;
@@ -312,6 +353,11 @@ public class TimeTreeNode {
      */
     public boolean isExtant() {
         return isExtant(1E-12);
+    }
+
+    public boolean hasLineage(int lineage){
+        String pattern = "f".concat(String.valueOf(lineage)).concat("_.*");
+        return id.matches(pattern);
     }
 
     /**

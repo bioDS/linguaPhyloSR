@@ -1,0 +1,10 @@
+model{
+d ~ Uniform(lower = 0.7, upper = 0.9);
+v ~ Uniform(lower = 0.2, upper = 0.8);
+s ~ Uniform(lower = 0.2, upper = 0.8);
+rho ~ Uniform(lower = 0.7, upper = 1);
+birth = d/(1-v);
+death = v*birth;
+sampling = death*s/(1-s);
+ S ~ SimSRFBDAge(lambda=birth, mu=death,  psi=sampling, frac=rho, originAge=4, maxSamples = 1000, minExtant = 5);
+}

@@ -16,8 +16,9 @@ import org.apache.commons.math3.random.RandomGenerator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.TreeMap;
-
+import java.util.Collections;
 import static lphy.base.evolution.birthdeath.BirthDeathConstants.*;
 
 /**
@@ -29,12 +30,17 @@ import static lphy.base.evolution.birthdeath.BirthDeathConstants.*;
         title="On the Generalized \"Birth-and-Death\" Process",
         authors={"Kendall"},
         DOI="https://doi.org/10.1214/aoms/1177730285")
-public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
+public class FullBirthDeathSkyTree implements GenerativeDistribution<TimeTree> {
 
-    private Value<Number> birthRate;
-    private Value<Number> deathRate;
+    private Value<Number[]> birthRate;
+    private Value<Number[]> deathRate;
+    private Value<Number[]> skyTimes;
     private Value<Number> rootAge;
     private Value<Number> originAge;
+
+    private double[] lambda;
+    private double[] mu;
+    private double[] intervals;
 
     private List<TimeTreeNode> activeNodes;
     private int maxLineage = 1;
@@ -43,32 +49,59 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
 
     private static final int MAX_ATTEMPTS = 1000;
 
-    public FullBirthDeathTree(@ParameterInfo(name = lambdaParamName, description = "per-lineage birth rate.") Value<Number> birthRate,
-                              @ParameterInfo(name = muParamName, description = "per-lineage death rate.") Value<Number> deathRate,
-                              @ParameterInfo(name = rootAgeParamName, description = "the age of the root of the tree (only one of rootAge and originAge may be specified).", optional=true) Value<Number> rootAge,
-                              @ParameterInfo(name = originAgeParamName, description = "the age of the origin of the tree  (only one of rootAge and originAge may be specified).", optional=true) Value<Number> originAge) {
-//        Number[] birthArray = new Number[1];
-//        birthArray[0] = birth;
-//        birthRate = birthArray;
-//        FullBirthDeathTree(birthRate, deathRate, rootAge, originAge);
-//    }
-//
-//
-//    public FullBirthDeathTree(@ParameterInfo(name = lambdaParamName, description = "per-lineage birth rate.") Value<Number[]> birthRate,
-//                              @ParameterInfo(name = muParamName, description = "per-lineage death rate.") Value<Number[]> deathRate,
-//                              @ParameterInfo(name = rootAgeParamName, description = "the age of the root of the tree (only one of rootAge and originAge may be specified).", optional=true) Value<Number> rootAge,
-//                              @ParameterInfo(name = originAgeParamName, description = "the age of the origin of the tree  (only one of rootAge and originAge may be specified).", optional=true) Value<Number> originAge) {
-
+    public FullBirthDeathSkyTree(@ParameterInfo(name = lambdaParamName, description = "per-lineage birth rate.") Value<Number[]> birthRate,
+                                 @ParameterInfo(name = muParamName, description = "per-lineage death rate.") Value<Number[]> deathRate,
+                                 @ParameterInfo(name = skyTimesParamName, description = "skyline interval times") Value<Number[]> skyTimes,
+                                 @ParameterInfo(name = rootAgeParamName, description = "the age of the root of the tree (only one of rootAge and originAge may be specified).", optional=true) Value<Number> rootAge,
+                                 @ParameterInfo(name = originAgeParamName, description = "the age of the origin of the tree  (only one of rootAge and originAge may be specified).", optional=true) Value<Number> originAge) {
         this.birthRate = birthRate;
         this.deathRate = deathRate;
         this.rootAge = rootAge;
         this.originAge = originAge;
+        this.skyTimes = skyTimes;
         this.random = RandomUtils.getRandom();
+
+
 
         if (rootAge != null && originAge != null) throw new IllegalArgumentException("Only one of rootAge and originAge may be specified!");
         if (rootAge == null && originAge == null) throw new IllegalArgumentException("One of rootAge and originAge must be specified!");
 
+        lambda = ValueUtils.doubleArrayValue(birthRate);
+        mu = ValueUtils.doubleArrayValue(deathRate);
+        intervals = ValueUtils.doubleArrayValue(skyTimes);
+        int l = lambda.length;
+        int m = mu.length;
+        int i = intervals.length;
+        double[] intervalsSorted = new double[i];
+        System.arraycopy( intervals, 0, intervalsSorted, 0, intervals.length );
+        java.util.Arrays.sort(intervalsSorted);
+        intervalsSorted = reverse(intervalsSorted);
+
+        if (l != m || l != i || m != i) {
+            throw new IllegalArgumentException("Birth, death and skyline intervals must have the same length");
+        }
+        if (!(Arrays.equals(intervalsSorted, intervals))){
+            throw new IllegalArgumentException("Interval times must be ordered from largest to smallest");
+        }
+
+        System.out.println("intervals " + Arrays.toString(intervals));
+
+
+//        for (int a = 0; a < i; a++){
+//            intervals[a] = ValueUtils.doubleValue(originAge) - intervals[a];
+//        }
+
+
         activeNodes = new ArrayList<>();
+    }
+    // reverse code from https://www.geeksforgeeks.org/reverse-an-array-in-java/
+    private double[] reverse(double[] array){
+        for (int j = 0; j < array.length / 2; j++) {
+            double t = array[j];
+            array[j] = array[array.length - 1 - j];
+            array[array.length - 1 - j] = t;
+        }
+        return array;
     }
 
 
@@ -81,13 +114,14 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
         boolean success = false;
         TimeTree tree = new TimeTree();
         TimeTreeNode root = null;
+        int currentInt = 0;
 
-        double lambda = ValueUtils.doubleValue(birthRate);
-        double mu = ValueUtils.doubleValue(deathRate);
 
         int attempts = 0;
 
         while (!success && attempts < MAX_ATTEMPTS) {
+            currentInt = 0;
+
             activeNodes.clear();
 
             root = new TimeTreeNode((String)null, tree);
@@ -115,18 +149,32 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
             }
 
             while (time > 0.0 && activeNodes.size() > 0) {
+
+
+                while(intervals[currentInt] >= time){
+                    currentInt++;
+                }
+//                System.out.println("time: " + time + " lower interval bound: " + intervals[currentInt]);
+//                System.out.println("birth: " + lambda[currentInt] + " death: " + mu[currentInt]);
+
                 int k = activeNodes.size();
 
-                double totalRate = (lambda + mu) * (double) k;
+                double totalRate = (lambda[currentInt] + mu[currentInt]) * (double) k;
 
                 // random exponential variate
                 double x = -Math.log(random.nextDouble()) / totalRate;
                 time -= x;
 
+                if(time <= intervals[currentInt]){
+                    time = intervals[currentInt];
+//                    System.out.println("next interval");
+                    continue;
+                }
+
                 if (time < 0) break;
 
                 double U = random.nextDouble();
-                if (U < lambda / (lambda + mu)) {
+                if (U < lambda[currentInt] / (lambda[currentInt] + mu[currentInt])) {
                     doBirth(activeNodes, time, tree);
                 } else {
                     doDeath(activeNodes, time);
@@ -145,7 +193,7 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
         }
 
         if (!success) {
-            throw new RuntimeException("Failed to simulated FullBirthDeathTree after " + MAX_ATTEMPTS + " attempts.");
+            throw new RuntimeException("Failed to simulated FullBirthSkyDeathTree after " + MAX_ATTEMPTS + " attempts.");
         }
 
         tree.setRoot(root, true);
@@ -186,6 +234,7 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
         return new TreeMap<>() {{
             put(lambdaParamName, birthRate);
             put(muParamName, deathRate);
+            put(skyTimesParamName, skyTimes);
             if (rootAge != null) put(rootAgeParamName, rootAge);
             if (originAge != null) put(originAgeParamName, originAge);
         }};
@@ -197,6 +246,7 @@ public class FullBirthDeathTree implements GenerativeDistribution<TimeTree> {
     public void setParam(String paramName, Value value) {
         if (paramName.equals(lambdaParamName)) birthRate = value;
         else if (paramName.equals(muParamName)) deathRate = value;
+        else if (paramName.equals(skyTimesParamName)) skyTimes = value;
         else if (paramName.equals(rootAgeParamName)) rootAge = value;
         else if (paramName.equals(originAgeParamName)) originAge = value;
         else throw new RuntimeException("Unrecognised parameter name: " + paramName);

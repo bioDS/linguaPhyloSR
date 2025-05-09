@@ -27,6 +27,19 @@ public class TimeTree implements HasTaxa, MultiDimensional {
     // number of leaves
     int n = 0;
 
+    public TimeTree(ArrayList<TimeTreeNode> nodes) {
+        this.nodes = nodes;
+        TimeTreeNode root = null;
+        double age = -1;
+        for (TimeTreeNode node : nodes) {
+            if (node.age > age){
+                age = node.age;
+                root = node;
+            }
+        }
+        setRoot(root, true);
+    }
+
     public TimeTree(Taxa taxa) {
         this.taxa = taxa;
         constructedWithTaxa = true;
@@ -70,6 +83,23 @@ public class TimeTree implements HasTaxa, MultiDimensional {
             nextInternalIndex[0] += 1;
         }
     }
+
+    public int getMaxLineage() {
+        int maxLineage = 1;
+        int lineage;
+        List<TimeTreeNode> nodes = getNodes();
+        if (nodes == null || nodes.size() == 0) {
+            return 1;
+        }
+        for (TimeTreeNode node : nodes) {
+            lineage = node.getLineage();
+            if (lineage > maxLineage)
+                maxLineage = lineage;
+        }
+        return maxLineage;
+    }
+
+
 
     public int getNodeCount() {
         return nodes.size();
@@ -241,6 +271,13 @@ public class TimeTree implements HasTaxa, MultiDimensional {
         return getNodes().stream().filter(TimeTreeNode::isExtant).collect(Collectors.toList());
     }
 
+    public List<TimeTreeNode> getLineageNodes(int lineage) {
+        return getFossilNodes().stream().filter(node -> node.hasLineage(lineage)).collect(Collectors.toList());
+    }
+
+    public List<TimeTreeNode> getObservedExtantNodes() {
+        return getNodes().stream().filter(TimeTreeNode::isExtant).filter(TimeTreeNode::isObserved).collect(Collectors.toList());
+    }
     public List<TimeTreeNode> getInternalNodes() {
         return getNodes().stream().filter(Predicate.not(TimeTreeNode::isLeaf)).collect(Collectors.toList());
     }
@@ -249,7 +286,28 @@ public class TimeTree implements HasTaxa, MultiDimensional {
         return getNodes().stream().filter(TimeTreeNode::isLeaf).collect(Collectors.toList());
     }
 
+    public List<TimeTreeNode> getFossilNodes(){
+        return getNodes().stream().filter(TimeTreeNode::isFossil).collect(Collectors.toList());
+    }
+
+
+
     // methods permitted pass-through to LPhy
+
+    @MethodInfo(description = "most recent common ancestor")
+    public double getMRCA(){
+        List<TimeTreeNode> nodes = getNodes();
+        double age = -1;
+        double rootAge = rootAge();
+        double currentAge;
+        for (TimeTreeNode node : nodes) {
+            currentAge = node.getAge();
+            if (currentAge > age && currentAge < rootAge) {
+                age = currentAge;
+            }
+        }
+        return age;
+    }
 
     @MethodInfo(description = "the total length of the tree")
     public Double treeLength() {
@@ -276,6 +334,8 @@ public class TimeTree implements HasTaxa, MultiDimensional {
     public Integer nodeCount() {
         return getNodeCount();
     }
+
+
 
     @MethodInfo(description = "the total number of branches in the tree (returns nodeCount() - 1)")
     public Integer branchCount() {

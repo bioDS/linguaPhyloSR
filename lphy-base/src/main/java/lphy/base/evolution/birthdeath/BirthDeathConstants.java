@@ -11,4 +11,7 @@ public class BirthDeathConstants {
     public static final String turnoverParamName = "turnover";
     public static final String rootAgeParamName = "rootAge";
     public static final String originAgeParamName = "originAge";
+    public static final String maxSamplesParamName = "maxSamples";
+    public static final String minExtantParamName = "minExtant";
+    public static final String skyTimesParamName = "skyTimes";
 }

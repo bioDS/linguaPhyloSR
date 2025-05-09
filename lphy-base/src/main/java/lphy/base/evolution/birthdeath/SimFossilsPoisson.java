@@ -15,6 +15,7 @@ import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -52,18 +53,34 @@ public class SimFossilsPoisson implements GenerativeDistribution<TimeTree> {
         TimeTree treeCopy = new TimeTree(tree.value());
 
         simulateFossils(treeCopy, samplingRate);
+        relabelExtant(treeCopy);
 
         return new RandomVariable<>(null, treeCopy, this);
     }
 
+    private void relabelExtant(TimeTree tree) {
+        List<TimeTreeNode> extant = tree.getExtantNodes();
+        for( TimeTreeNode node : extant ) {
+            int lineage = node.getLineage();
+//            System.out.println(node);
+//            System.out.println(node.getLineage());
+//            System.out.println(nextFossilNumber[node.getLineage() - 1]);
+            node.setId("f"+lineage+"_0");
+        }
+    }
+
     private void simulateFossils(TimeTree tree, double psi) {
 
-        int nextFossilNumber = 0;
+//        int nextFossilNumber = 0;
+//        List<Integer> nextFossilNumbers = new ArrayList<>();
+        int[] nextFossilNumber = new int[tree.getMaxLineage()];
+
 
 
         for (TimeTreeNode node : tree.getNodes()) {
 
             if (!node.isRoot()) {
+                int lineage = node.getLineage();
                 double min = node.getAge();
                 double max = node.getParent().getAge();
                 double expectedFossils = (max - min) * psi;
@@ -75,20 +92,23 @@ public class SimFossilsPoisson implements GenerativeDistribution<TimeTree> {
                     for (int i = 0; i < fossils; i++) {
                         fossilTimes[i] = random.nextDouble() * (max - min) + min;
                     }
-                    addFossils(fossilTimes, node.getParent(), node, nextFossilNumber, tree);
+                    addFossils(fossilTimes, node.getParent(), node, lineage, nextFossilNumber[lineage-1], tree);
                 }
-                nextFossilNumber += fossils;
+                nextFossilNumber[lineage-1] += fossils;
+//                nextFossilNumber += fossils;
             }
         }
 
         tree.setRoot(tree.getRoot(), true);
     }
 
-    private void addFossils(double[] times, TimeTreeNode parent, TimeTreeNode child, int nextFossilNumber, TimeTree tree) {
+    private void addFossils(double[] times, TimeTreeNode parent, TimeTreeNode child, int lineage, int nextFossilNumber, TimeTree tree) {
         Arrays.sort(times);
 
+        nextFossilNumber = nextFossilNumber + times.length;
+
         for (int i = times.length - 1; i >= 0; i--) {
-            Taxon fossilTaxon = new Taxon("f_"+nextFossilNumber+"", times[i]);
+            Taxon fossilTaxon = new Taxon("f"+lineage+"_"+nextFossilNumber, times[i]);
 
             parent.removeChild(child);
 
@@ -104,7 +124,7 @@ public class SimFossilsPoisson implements GenerativeDistribution<TimeTree> {
             parent.addChild(fossilNode);
             fossilNode.addChild(child);
             parent = fossilNode;
-            nextFossilNumber += 1;
+            nextFossilNumber -= 1;
         }
     }
     

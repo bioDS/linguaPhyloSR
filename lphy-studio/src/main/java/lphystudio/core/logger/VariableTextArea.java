@@ -79,8 +79,8 @@ public class VariableTextArea extends JTextArea implements SimulatorListener {
 //            builder.append(sample+"");
                 builder.append(rowNames.get(sample));
 
-                for (String valId : formattedValuesById.keySet()) {
-
+               // for (String valId : formattedValuesById.keySet()) {
+                for (String valId : headers) {
                     List<Double> formattedValues = formattedValuesById.get(valId);
 
                     builder.append("\t").append(formattedValues.get(sample));
