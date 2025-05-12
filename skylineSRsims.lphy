@@ -1,1 +1,6 @@
-D = simulate(lphy="skylineSR.lphy", seed=42);
+birth = [3, 1, 1, 1];
+death = [0.5,0.5,0.5,0.5];
+sampling = [1,1,1,1];
+times = [3,2,1,0];
+rho ~ Uniform(lower = 0.7, upper = 1);
+ S ~ SimSkySRFBDAge(lambda=birth, mu=death, skyTimes=times,  psi=sampling, frac=rho, originAge=4, maxSamples = 1000, minExtant = 5);

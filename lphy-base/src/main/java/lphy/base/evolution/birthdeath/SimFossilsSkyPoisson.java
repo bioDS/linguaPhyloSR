@@ -103,14 +103,14 @@ public class SimFossilsSkyPoisson implements GenerativeDistribution<TimeTree> {
                 double min = node.getAge();
                 double max = node.getParent().getAge();
 
-                int minInterval = 0;
-                int maxInterval = 0;
+                int minInterval = -1;
+                int maxInterval = -1;
                 System.out.println("max: " + max + " min: " + min);
                 for(int i = 0; i < intervals.length; i++) {
-                    if (maxInterval == 0 &&  max >= intervals[i]) {
+                    if (maxInterval == -1 &&  max >= intervals[i]) {
                         maxInterval = i;
                     }
-                    if (minInterval == 0 && min >= intervals[i]) {
+                    if (minInterval == -1 && min >= intervals[i]) {
                         minInterval = i;
                     }
                 }
@@ -131,6 +131,11 @@ public class SimFossilsSkyPoisson implements GenerativeDistribution<TimeTree> {
                 }
             }
         }
+        System.out.println("All psi\n");
+        for(int i = 0; i < psi.length; i++) {
+            System.out.println(psi[i]);
+        }
+
 
         tree.setRoot(tree.getRoot(), true);
     }

@@ -76,13 +76,13 @@ public class OldestYoungest extends DeterministicFunction<TimeTree> {
                 int fossilNo = node.getFossilNo();
                 int lineage = node.getLineage();
                 if (fossilNo == nextFossilNumber[lineage - 1]) {
-                    System.out.println("setting " + node.getId() + " to " + "f" + lineage + "_first");
+//                    System.out.println("setting " + node.getId() + " to " + "f" + lineage + "_first");
                     node.setId("f" + lineage + "_first");
                 }
                 else {
                     if (fossilNo == minFossilNumber[lineage-1]) {
                         node.setId("f"+lineage+"_last");
-                        System.out.println("setting " + node.getId() + " to " + "f" + lineage + "_last");
+//                        System.out.println("setting " + node.getId() + " to " + "f" + lineage + "_last");
                     } else {
                         TimeTreeNode parent = node.getParent();
                         TimeTreeNode grandParent = parent.getParent();

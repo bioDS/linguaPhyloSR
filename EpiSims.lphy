@@ -1,0 +1,1 @@
+S ~ SimSRFBDAge(lambda=0.2, mu=0.001,  psi=0.05, frac=1.0, originAge=20, maxSamples = -1, minExtant = -1);
